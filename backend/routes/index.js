@@ -1,10 +1,10 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const azureDevOpsService = require('../services/azureDevOpsService');
+const azureDevOpsService = require("../services/azureDevOpsService");
 
 /* GET home page. */
-router.get('/', function(req, res, next) {
-  res.json({ message: 'Welcome to the API' });
+router.get("/", function (req, res, next) {
+  res.json({ message: "Welcome to the API" });
 });
 
 // 获取本周的开始和结束日期
@@ -30,36 +30,41 @@ function getWeekDates() {
   };
 }
 
-router.post('/api/tasks', async (req, res) => {
+router.post("/api/tasks", async (req, res) => {
   const settings = req.body;
   if (!settings || !settings.token) {
-    return res.status(401).json({ error: 'Settings are required' });
+    return res.status(401).json({ error: "Settings are required" });
   }
 
   try {
     const { startDate, endDate } = getWeekDates();
-    const [createdTasks, closedTasks, closedBugs, activeTasks] = await Promise.all([
-      azureDevOpsService.getCreatedTasks(settings, startDate, endDate),
-      azureDevOpsService.getClosedTasks(settings, startDate, endDate),
-      azureDevOpsService.getClosedBugs(settings, startDate, endDate),
-      azureDevOpsService.getActiveOrNewTasks(settings)
-    ]);
+    const [createdTasks, closedTasks, closedBugs, activeTasks] =
+      await Promise.all([
+        azureDevOpsService.getCreatedTasks(settings, startDate, endDate),
+        azureDevOpsService.getClosedTasks(settings, startDate, endDate),
+        azureDevOpsService.getClosedBugs(settings, startDate, endDate),
+        azureDevOpsService.getActiveOrNewTasks(settings),
+      ]);
 
     res.json({
       createdTasks,
       closedTasks,
       closedBugs,
-      activeTasks
+      activeTasks,
     });
   } catch (error) {
-    console.error('Error fetching tasks:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Failed to fetch tasks' });
+    console.error(
+      "Error fetching tasks:",
+      error.response?.data || error.message
+    );
+    res.status(500).json({ error: "Failed to fetch tasks" });
   }
 });
 
-router.post('/api/report', async (req, res) => {
+router.post("/api/report", async (req, res) => {
   try {
-    const { settings, createdTasks, closedTasks, closedBugs, activeTasks } = req.body;
+    const { settings, createdTasks, closedTasks, closedBugs, activeTasks } =
+      req.body;
     const report = azureDevOpsService.generateWeekReport({
       createdTasks,
       closedTasks,
@@ -67,10 +72,10 @@ router.post('/api/report', async (req, res) => {
       activeTasks,
     });
 
-    res.json({ success: true, message: '报告生成成功', report });
+    res.json({ success: true, message: "报告生成成功", report });
   } catch (error) {
-    console.error('Error generating report:', error);
-    res.status(500).json({ error: 'Failed to generate report' });
+    console.error("Error generating report:", error);
+    res.status(500).json({ error: "Failed to generate report" });
   }
 });
 
