@@ -182,7 +182,6 @@ const captureScreenshot = async (source = 'main') => {
     if (source === 'report') {
       element = document.getElementById("report-content");
     } else {
-      // 主页面截图
       element = document.getElementById("main-content");
     }
 
@@ -201,24 +200,84 @@ const captureScreenshot = async (source = 'main') => {
       backgroundColor: '#ffffff'
     });
 
-    // 在移动端，使用 Blob 和 window.open 来显示图片
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-    const blobUrl = URL.createObjectURL(blob);
+    // 将 canvas 转换为图片数据
+    const imgData = canvas.toDataURL('image/png');
     
-    if (/mobile/i.test(navigator.userAgent)) {
-      // 移动端：在新窗口打开图片，用户可以长按保存
-      window.open(blobUrl, '_blank');
+    if (/mobile|android|iphone/i.test(navigator.userAgent)) {
+      // 移动端：创建一个临时的 a 标签并模拟点击
+      const timestamp = new Date().toISOString().split('T')[0];
+      const fileName = source === 'report' ? `周报_${timestamp}.png` : `任务列表_${timestamp}.png`;
+      
+      // 创建一个 div 来显示保存提示
+      const saveDiv = document.createElement('div');
+      saveDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        z-index: 9999;
+        text-align: center;
+        font-size: 14px;
+        max-width: 80%;
+      `;
+      saveDiv.innerHTML = `
+        <p style="margin: 0 0 10px;">图片已生成</p>
+        <p style="margin: 0;">请长按图片并选择"保存图片"</p>
+      `;
+      document.body.appendChild(saveDiv);
+
+      // 创建图片预览
+      const imgPreview = document.createElement('div');
+      imgPreview.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 9998;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      `;
+      
+      const img = document.createElement('img');
+      img.src = imgData;
+      img.style.cssText = `
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+      `;
+      
+      // 点击背景关闭预览
+      imgPreview.onclick = () => {
+        document.body.removeChild(imgPreview);
+        document.body.removeChild(saveDiv);
+      };
+      
+      imgPreview.appendChild(img);
+      document.body.appendChild(imgPreview);
+
+      // 3秒后自动隐藏提示
+      setTimeout(() => {
+        if (document.body.contains(saveDiv)) {
+          document.body.removeChild(saveDiv);
+        }
+      }, 3000);
     } else {
       // 桌面端：直接下载
       const link = document.createElement("a");
       const timestamp = new Date().toISOString().split('T')[0];
       link.download = source === 'report' ? `周报_${timestamp}.png` : `任务列表_${timestamp}.png`;
-      link.href = blobUrl;
+      link.href = imgData;
       link.click();
     }
 
-    // 清理 Blob URL
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
     ElMessage.success("截图已生成");
   } catch (error) {
     console.error("Error capturing screenshot:", error);

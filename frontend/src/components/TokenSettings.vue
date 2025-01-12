@@ -1,6 +1,6 @@
 <template>
   <div>
-    <slot :openDialog="() => dialogVisible = true"></slot>
+    <slot :openDialog="() => (dialogVisible = true)"></slot>
 
     <el-dialog
       v-model="dialogVisible"
@@ -81,7 +81,7 @@
                   v-model="form.projects[index]"
                   placeholder="输入项目名称"
                   clearable
-                  style="width: 300px;"
+                  style="width: 100%;"
                 >
                   <template #append>
                     <el-button
@@ -128,9 +128,9 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { Delete, Plus, Link } from "@element-plus/icons-vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 
-const emit = defineEmits(['save-success']);
+const emit = defineEmits(["save-success"]);
 
 const dialogVisible = ref(false);
 const formRef = ref(null);
@@ -138,7 +138,7 @@ const saving = ref(false);
 const isMobile = ref(window.innerWidth <= 768);
 
 // 监听窗口大小变化
-window.addEventListener('resize', () => {
+window.addEventListener("resize", () => {
   isMobile.value = window.innerWidth <= 768;
 });
 
@@ -162,7 +162,10 @@ const removeProject = (index) => {
 const openTokenPage = async () => {
   const organization = form.value.organization;
   try {
-    window.open(`https://dev.azure.com/${organization}/_usersSettings/tokens`, '_blank');
+    window.open(
+      `https://dev.azure.com/${organization}/_usersSettings/tokens`,
+      "_blank"
+    );
     ElMessage.success("正在打开Token生成页面");
   } catch (error) {
     console.error("打开链接失败:", error);
@@ -199,7 +202,7 @@ const handleSave = async () => {
     localStorage.setItem("azureDevOpsSettings", JSON.stringify(settings));
     dialogVisible.value = false;
     ElMessage.success("设置已保存");
-    emit('save-success');
+    emit("save-success");
   } catch (error) {
     console.error("验证失败:", error);
     ElMessage.error("验证失败，请检查输入");
@@ -208,16 +211,30 @@ const handleSave = async () => {
   }
 };
 
-const clearSettings = () => {
-  ElMessage.success("设置已清除");
-  localStorage.removeItem("azureDevOpsSettings");
-  form.value = {
-    token: "",
-    organization: "",
-    projects: [""],
-  };
-  dialogVisible.value = false;
-  emit('save-success');
+const clearSettings = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要清除所有设置吗？此操作不可恢复。',
+      '确认清除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    );
+    
+    localStorage.removeItem("azureDevOpsSettings");
+    form.value = {
+      token: "",
+      organization: "",
+      projects: [""],
+    };
+    dialogVisible.value = false;
+    ElMessage.success("设置已清除");
+    emit("save-success");
+  } catch {
+    // 用户取消操作，不做任何处理
+  }
 };
 
 const loadSettings = () => {
@@ -269,24 +286,31 @@ defineExpose({
   margin-bottom: 20px;
 }
 
-.project-list {
-  margin-top: 10px;
+.projects-container {
+  /* margin-top: 10px; */
+  width: 100%;
 }
 
 .project-item {
   display: flex;
   align-items: center;
+  gap: 8px;
   margin-bottom: 10px;
-}
-
-.project-input {
-  flex: 1;
-  margin-right: 10px;
 }
 
 .add-project-btn {
   margin-top: 10px;
   width: 100%;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog-footer .el-button:first-child {
+  margin-right: auto;
 }
 
 @media screen and (max-width: 768px) {
@@ -312,14 +336,14 @@ defineExpose({
   }
 
   :deep(.el-form-item__label) {
-    padding: 0 0 8px;
+    /* padding: 0 0 8px; */
     line-height: 1.5;
     color: #606266;
     font-size: 14px;
   }
 
   :deep(.el-form--label-top .el-form-item__label) {
-    margin-bottom: 8px;
+    /* margin-bottom: 8px; */
   }
 
   :deep(.el-input) {
@@ -329,11 +353,6 @@ defineExpose({
   .project-item {
     flex-direction: row;
     align-items: center;
-    gap: 8px;
-  }
-
-  .project-input {
-    margin-right: 0;
   }
 
   :deep(.el-button.is-circle) {
@@ -343,28 +362,22 @@ defineExpose({
 
   :deep(.el-dialog__footer) {
     padding: 10px 15px;
-    text-align: center;
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-  }
-
-  :deep(.el-dialog__footer .el-button) {
-    margin: 0;
-    flex: 1;
-    padding: 8px 15px;
-    height: 36px;
-    font-size: 14px;
   }
 
   .dialog-footer {
     display: flex;
-    gap: 8px;
+    /* flex-direction: column; */
     width: 100%;
+    gap: 8px;
   }
 
   .dialog-footer .el-button {
-    flex: 1;
+    width: 100%;
+    margin: 0;
+  }
+
+  .dialog-footer .el-button:first-child {
+    margin-right: 0;
   }
 }
 </style>
