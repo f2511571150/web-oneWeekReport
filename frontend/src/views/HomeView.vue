@@ -2,10 +2,22 @@
   <div class="container">
     <div class="header">
       <div class="action-buttons">
-        <token-settings ref="tokenSettingsRef" @save-success="handleSaveSuccess">
+        <token-settings
+          ref="tokenSettingsRef"
+          @save-success="handleSaveSuccess"
+        >
           <template #default="{ openDialog }">
-            <el-tooltip content="Azure DevOps 设置" placement="bottom" effect="dark">
-              <el-button type="primary" :icon="Setting" circle @click="openDialog" />
+            <el-tooltip
+              content="Azure DevOps 设置"
+              placement="bottom"
+              effect="dark"
+            >
+              <el-button
+                type="primary"
+                :icon="Setting"
+                circle
+                @click="openDialog"
+              />
             </el-tooltip>
           </template>
         </token-settings>
@@ -33,22 +45,58 @@
 
     <div class="main-content" id="main-content">
       <div v-if="createdTasks.length > 0" class="task-section">
-        <h3>Created Task Total Original Estimate = {{ createdTasks.reduce((sum, task) => sum + (task.originalEstimate || 0), 0) }} 小时</h3>
+        <h3>
+          Created Task Total Original Estimate =
+          {{
+            createdTasks.reduce(
+              (sum, task) => sum + (task.originalEstimate || 0),
+              0
+            )
+          }}
+          小时
+        </h3>
         <task-list :tasks="createdTasks" />
       </div>
 
       <div v-if="closedTasks.length > 0" class="task-section">
-        <h3>Closed Task Total Original Estimate = {{ closedTasks.reduce((sum, task) => sum + (task.originalEstimate || 0), 0) }} 小时</h3>
+        <h3>
+          Closed Task Total Original Estimate =
+          {{
+            closedTasks.reduce(
+              (sum, task) => sum + (task.originalEstimate || 0),
+              0
+            )
+          }}
+          小时
+        </h3>
         <task-list :tasks="closedTasks" />
       </div>
 
       <div v-if="closedBugs.length > 0" class="task-section">
-        <h3>Closed Bug Total Original Estimate = {{ closedBugs.reduce((sum, task) => sum + (task.originalEstimate || 0), 0) }} 小时</h3>
+        <h3>
+          Closed Bug Total Original Estimate =
+          {{
+            closedBugs.reduce(
+              (sum, task) => sum + (task.originalEstimate || 0),
+              0
+            )
+          }}
+          小时
+        </h3>
         <task-list :tasks="closedBugs" />
       </div>
 
       <div v-if="activeTasks.length > 0" class="task-section">
-        <h3>Active Task Total Original Estimate = {{ activeTasks.reduce((sum, task) => sum + (task.originalEstimate || 0), 0) }} 小时</h3>
+        <h3>
+          Active Task Total Original Estimate =
+          {{
+            activeTasks.reduce(
+              (sum, task) => sum + (task.originalEstimate || 0),
+              0
+            )
+          }}
+          小时
+        </h3>
         <task-list :tasks="activeTasks" />
       </div>
     </div>
@@ -62,7 +110,9 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button type="primary" @click="copyReport">复制</el-button>
-          <el-button type="primary" @click="captureScreenshot('report')">截图</el-button>
+          <el-button type="primary" @click="captureScreenshot('report')"
+            >截图</el-button
+          >
         </div>
       </template>
     </el-dialog>
@@ -146,9 +196,9 @@ const generateWeeklyReport = async () => {
 const filterTasksByProjects = (tasks) => {
   const settings = tokenSettingsRef.value?.getSettings();
   if (!settings?.projects?.length) return tasks;
-  
-  return tasks.filter(task => 
-    settings.projects.some(project => 
+
+  return tasks.filter((task) =>
+    settings.projects.some((project) =>
       task.project.toLowerCase().includes(project.toLowerCase())
     )
   );
@@ -176,10 +226,10 @@ const handleSaveSuccess = () => {
 };
 
 // 截图
-const captureScreenshot = async (source = 'main') => {
+const captureScreenshot = async (source = "main") => {
   try {
     let element;
-    if (source === 'report') {
+    if (source === "report") {
       element = document.getElementById("report-content");
     } else {
       element = document.getElementById("main-content");
@@ -189,50 +239,87 @@ const captureScreenshot = async (source = 'main') => {
       ElMessage.error("未找到要截图的内容");
       return;
     }
-    
-    const canvas = await html2canvas(element, {
-      useCORS: true,
-      scale: window.devicePixelRatio,
-      logging: false,
-      allowTaint: true,
-      scrollX: 0,
-      scrollY: -window.scrollY,
-      backgroundColor: '#ffffff'
+
+    // 保存原始样式和滚动位置
+    const originalScrollTop = window.scrollY;
+    const originalStyles = new Map();
+
+    // 获取所有表格和可滚动元素
+    const scrollableElements = element.querySelectorAll(
+      ".el-table__body-wrapper, [style*='overflow']"
+    );
+
+    // 保存原始样式并临时修改
+    scrollableElements.forEach((el) => {
+      originalStyles.set(el, {
+        height: el.style.height,
+        maxHeight: el.style.maxHeight,
+        overflow: el.style.overflow,
+        position: el.style.position,
+      });
+
+      // 临时移除高度限制和滚动
+      el.style.height = "auto";
+      el.style.maxHeight = "none";
+      el.style.overflow = "visible";
+      el.style.position = "relative";
     });
 
-    // 将 canvas 转换为图片数据
-    const imgData = canvas.toDataURL('image/png');
-    
-    if (/mobile|android|iphone/i.test(navigator.userAgent)) {
-      // 移动端：创建一个临时的 a 标签并模拟点击
-      const timestamp = new Date().toISOString().split('T')[0];
-      const fileName = source === 'report' ? `周报_${timestamp}.png` : `任务列表_${timestamp}.png`;
-      
-      // 创建一个 div 来显示保存提示
-      const saveDiv = document.createElement('div');
-      saveDiv.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 20px;
-        border-radius: 8px;
-        z-index: 9999;
-        text-align: center;
-        font-size: 14px;
-        max-width: 80%;
-      `;
-      saveDiv.innerHTML = `
-        <p style="margin: 0 0 10px;">图片已生成</p>
-        <p style="margin: 0;">请长按图片并选择"保存图片"</p>
-      `;
-      document.body.appendChild(saveDiv);
+    // 确保表格内容完全展开
+    const tables = element.querySelectorAll(".el-table");
+    tables.forEach((table) => {
+      const wrapper = table.querySelector(".el-table__body-wrapper");
+      if (wrapper) {
+        wrapper.style.height = "auto";
+        wrapper.style.maxHeight = "none";
+      }
+    });
 
-      // 创建图片预览
-      const imgPreview = document.createElement('div');
-      imgPreview.style.cssText = `
+    const canvas = await html2canvas(element, {
+      useCORS: true,
+      scale: window.devicePixelRatio || 1,
+      logging: false,
+      allowTaint: true,
+      backgroundColor: "#ffffff",
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: element.scrollWidth,
+      windowHeight: element.scrollHeight,
+      onclone: (clonedDoc) => {
+        const clonedElement = clonedDoc.getElementById(element.id);
+        if (clonedElement) {
+          // 处理克隆元素中的表格
+          const clonedTables = clonedElement.querySelectorAll(".el-table");
+          clonedTables.forEach((table) => {
+            const wrapper = table.querySelector(".el-table__body-wrapper");
+            if (wrapper) {
+              wrapper.style.height = "auto";
+              wrapper.style.maxHeight = "none";
+              wrapper.style.overflow = "visible";
+            }
+          });
+        }
+      },
+    });
+
+    // 恢复原始样式
+    scrollableElements.forEach((el) => {
+      const originalStyle = originalStyles.get(el);
+      if (originalStyle) {
+        Object.assign(el.style, originalStyle);
+      }
+    });
+
+    // 恢复滚动位置
+    window.scrollTo(0, originalScrollTop);
+
+    // 将 canvas 转换为图片数据
+    const imgData = canvas.toDataURL("image/png");
+
+    if (/mobile|android|iphone/i.test(navigator.userAgent)) {
+      // 创建预览容器
+      const previewContainer = document.createElement("div");
+      previewContainer.style.cssText = `
         position: fixed;
         top: 0;
         left: 0;
@@ -240,47 +327,79 @@ const captureScreenshot = async (source = 'main') => {
         bottom: 0;
         background: rgba(0, 0, 0, 0.9);
         z-index: 9998;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 20px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
       `;
-      
-      const img = document.createElement('img');
+
+      // 创建图片容器
+      const imgContainer = document.createElement("div");
+      imgContainer.style.cssText = `
+        padding: 20px;
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      `;
+
+      // 创建图片元素
+      const img = document.createElement("img");
       img.src = imgData;
       img.style.cssText = `
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
+        width: 100%;
+        height: auto;
+        display: block;
       `;
-      
-      // 点击背景关闭预览
-      imgPreview.onclick = () => {
-        document.body.removeChild(imgPreview);
-        document.body.removeChild(saveDiv);
-      };
-      
-      imgPreview.appendChild(img);
-      document.body.appendChild(imgPreview);
 
-      // 3秒后自动隐藏提示
+      // 创建提示文本
+      const hint = document.createElement("div");
+      hint.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        text-align: center;
+        z-index: 9999;
+      `;
+      hint.textContent = "长按图片可保存";
+
+      imgContainer.appendChild(img);
+      previewContainer.appendChild(imgContainer);
+      document.body.appendChild(previewContainer);
+      document.body.appendChild(hint);
+
+      // 点击关闭预览
+      previewContainer.onclick = () => {
+        document.body.removeChild(previewContainer);
+        document.body.removeChild(hint);
+      };
+
+      // 3秒后隐藏提示
       setTimeout(() => {
-        if (document.body.contains(saveDiv)) {
-          document.body.removeChild(saveDiv);
+        if (document.body.contains(hint)) {
+          document.body.removeChild(hint);
         }
       }, 3000);
     } else {
-      // 桌面端：直接下载
+      // 桌面端下载
       const link = document.createElement("a");
-      const timestamp = new Date().toISOString().split('T')[0];
-      link.download = source === 'report' ? `周报_${timestamp}.png` : `任务列表_${timestamp}.png`;
+      const timestamp = new Date().toISOString().split("T")[0];
+      link.download =
+        source === "report"
+          ? `周报_${timestamp}.png`
+          : `任务列表_${timestamp}.png`;
       link.href = imgData;
       link.click();
     }
 
     ElMessage.success("截图已生成");
   } catch (error) {
-    console.error("Error capturing screenshot:", error);
+    console.error("截图失败:", error);
     ElMessage.error("截图失败：" + error.message);
   }
 };
