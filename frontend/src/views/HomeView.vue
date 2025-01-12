@@ -87,7 +87,7 @@ import TaskList from "../components/TaskList.vue";
 import TokenSettings from "../components/TokenSettings.vue";
 import Loading from "../components/Loading.vue";
 
-const API_BASE_URL = "http://localhost:3000";
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const tokenSettingsRef = ref(null);
 const createdTasks = ref([]);
