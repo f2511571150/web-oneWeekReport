@@ -64,7 +64,7 @@
     </div>
 
     <el-dialog v-model="reportDialogVisible" title="周报预览" width="800px">
-      <div class="report-content">
+      <div class="report-content" id="report-content">
         <pre>{{ reportContent }}</pre>
       </div>
       <template #footer>
@@ -82,12 +82,10 @@ import { ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import { Setting, Refresh, Camera } from "@element-plus/icons-vue";
 import html2canvas from "html2canvas";
-import axios from "axios";
 import TaskList from "../components/TaskList.vue";
 import TokenSettings from "../components/TokenSettings.vue";
 import Loading from "../components/Loading.vue";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+import { getTasks, generateReport } from "../api/tasks";
 
 const tokenSettingsRef = ref(null);
 const createdTasks = ref([]);
@@ -98,30 +96,23 @@ const loading = ref(false);
 const reportDialogVisible = ref(false);
 const reportContent = ref("");
 
-const filterTasksByProjects = (tasks) => {
-  const settings = tokenSettingsRef.value?.getSettings();
-  if (!settings?.projects || !Array.isArray(settings.projects)) {
-    return tasks;
-  }
-  return tasks.filter((task) => settings.projects.includes(task.project));
-};
-
+// 检查是否配置了令牌
 const checkToken = () => {
   if (!tokenSettingsRef.value?.isConfigured()) {
-    ElMessage.warning("请先完成Azure DevOps设置");
+    ElMessage.warning("请先配置 Azure DevOps 令牌");
     return false;
   }
   return true;
 };
 
+// 获取任务数据
 const fetchTasks = async () => {
   if (!checkToken()) return;
 
   try {
     loading.value = true;
     const settings = tokenSettingsRef.value.getSettings();
-    const response = await axios.post(`${API_BASE_URL}/api/tasks`, settings);
-    const result = response.data;
+    const result = await getTasks(settings);
 
     createdTasks.value = filterTasksByProjects(result.createdTasks);
     closedTasks.value = filterTasksByProjects(result.closedTasks);
@@ -129,20 +120,20 @@ const fetchTasks = async () => {
     activeTasks.value = filterTasksByProjects(result.activeTasks);
     ElMessage.success("数据加载成功");
   } catch (error) {
-    ElMessage.error("获取任务失败：" + (error.response?.data?.error || "未知错误"));
     console.error("Error fetching tasks:", error);
   } finally {
     loading.value = false;
   }
 };
 
-const generateReport = async () => {
+// 生成报告
+const generateWeeklyReport = async () => {
   if (!checkToken()) return;
 
   try {
     loading.value = true;
     const settings = tokenSettingsRef.value.getSettings();
-    const response = await axios.post(`${API_BASE_URL}/api/report`, {
+    const response = await generateReport({
       settings,
       createdTasks: createdTasks.value,
       closedTasks: closedTasks.value,
@@ -150,57 +141,65 @@ const generateReport = async () => {
       activeTasks: activeTasks.value,
     });
 
-    reportContent.value = response.data.report;
+    reportContent.value = response.report;
     reportDialogVisible.value = true;
   } catch (error) {
-    ElMessage.error("生成报告失败：" + (error.response?.data?.error || "未知错误"));
     console.error("Error generating report:", error);
   } finally {
     loading.value = false;
   }
 };
 
+// 过滤任务
+const filterTasksByProjects = (tasks) => {
+  const settings = tokenSettingsRef.value?.getSettings();
+  if (!settings?.projects?.length) return tasks;
+  
+  return tasks.filter(task => 
+    settings.projects.some(project => 
+      task.project.toLowerCase().includes(project.toLowerCase())
+    )
+  );
+};
+
+// 刷新数据
+const refreshData = () => {
+  fetchTasks();
+};
+
+// 复制报告
 const copyReport = async () => {
   try {
     await navigator.clipboard.writeText(reportContent.value);
-    ElMessage.success("已复制到剪贴板");
-    reportDialogVisible.value = false;
+    ElMessage.success("复制成功");
   } catch (error) {
+    console.error("Error copying report:", error);
     ElMessage.error("复制失败");
   }
 };
 
-const captureScreenshot = async () => {
-  try {
-    const mainContent = document.querySelector(".main-content");
-    if (!mainContent) {
-      throw new Error("Cannot find main content element");
-    }
-
-    const canvas = await html2canvas(mainContent, {
-      backgroundColor: "#ffffff",
-      scale: 2,
-    });
-
-    // 创建一个链接并触发下载
-    const link = document.createElement("a");
-    link.download = `周报截图_${new Date().toISOString().split("T")[0]}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-
-    ElMessage.success("截图已保存");
-  } catch (error) {
-    console.error("Screenshot error:", error);
-    ElMessage.error("截图失败");
-  }
-};
-
+// 保存成功回调
 const handleSaveSuccess = () => {
   fetchTasks();
 };
 
-const refreshData = () => {
-  fetchTasks();
+// 截图
+const captureScreenshot = async () => {
+  try {
+    const element = document.getElementById("report-content");
+    if (!element) return;
+    
+    const canvas = await html2canvas(element);
+    const dataUrl = canvas.toDataURL("image/png");
+    
+    const link = document.createElement("a");
+    link.download = "weekly-report.png";
+    link.href = dataUrl;
+    link.click();
+  } catch (error) {
+    console.error("Error capturing screenshot:", error);
+    ElMessage.error("截图失败");
+  }
 };
 
 onMounted(() => {
