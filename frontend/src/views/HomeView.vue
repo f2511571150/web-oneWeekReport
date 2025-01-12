@@ -1,77 +1,69 @@
 <template>
   <div class="container">
-    <div
-      style="
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        padding: 8px 20px;
-      "
-    >
-      <token-settings ref="tokenSettingsRef" @save-success="handleSaveSuccess">
-        <template #default="{ openDialog }">
-          <el-tooltip
-            content="Azure DevOps 设置"
-            placement="bottom"
-            effect="dark"
-          >
-            <el-button
-              type="primary"
-              :icon="Setting"
-              circle
-              size="small"
-              style="margin-left: 0px"
-              @click="openDialog"
-            />
-          </el-tooltip>
-        </template>
-      </token-settings>
+    <div class="header">
+      <div class="action-buttons">
+        <token-settings ref="tokenSettingsRef" @save-success="handleSaveSuccess">
+          <template #default="{ openDialog }">
+            <el-tooltip content="Azure DevOps 设置" placement="bottom" effect="dark">
+              <el-button type="primary" :icon="Setting" circle @click="openDialog" />
+            </el-tooltip>
+          </template>
+        </token-settings>
 
-      <el-tooltip content="刷新数据" placement="bottom" effect="dark">
-        <el-button
-          type="success"
-          :icon="Refresh"
-          circle
-          size="small"
-          @click="refreshData"
-          :loading="loading"
-          style="margin-left: 0px"
-        />
-      </el-tooltip>
+        <el-tooltip content="刷新数据" placement="bottom" effect="dark">
+          <el-button
+            type="success"
+            :icon="Refresh"
+            circle
+            @click="refreshData"
+            :loading="loading"
+          />
+        </el-tooltip>
 
-      <el-tooltip content="截图" placement="bottom" effect="dark">
-        <el-button
-          type="primary"
-          :icon="Camera"
-          circle
-          size="small"
-          style="margin-left: 0px"
-          @click="captureScreenshot"
-        />
-      </el-tooltip>
+        <el-tooltip content="截图" placement="bottom" effect="dark">
+          <el-button
+            type="primary"
+            :icon="Camera"
+            circle
+            @click="captureScreenshot"
+          />
+        </el-tooltip>
+      </div>
     </div>
 
-    <div
-      class="main-content"
-      style="flex-grow: 1; overflow: auto; padding: 8px 20px; background: #fff; position: relative"
-    >
-      <Loading :show="loading" text="正在获取最新数据..." />
-      <task-list :tasks="createdTasks" type="created" style="margin-top: 0" />
-      <task-list :tasks="closedTasks" type="closed" />
-      <task-list :tasks="closedBugs" type="bugs" />
-      <task-list :tasks="activeTasks" type="active" />
+    <div class="main-content" id="main-content">
+      <div v-if="createdTasks.length > 0" class="task-section">
+        <h3>Created Task Total Original Estimate = {{ createdTasks.reduce((sum, task) => sum + (task.originalEstimate || 0), 0) }} 小时</h3>
+        <task-list :tasks="createdTasks" />
+      </div>
+
+      <div v-if="closedTasks.length > 0" class="task-section">
+        <h3>Closed Task Total Original Estimate = {{ closedTasks.reduce((sum, task) => sum + (task.originalEstimate || 0), 0) }} 小时</h3>
+        <task-list :tasks="closedTasks" />
+      </div>
+
+      <div v-if="closedBugs.length > 0" class="task-section">
+        <h3>Closed Bug Total Original Estimate = {{ closedBugs.reduce((sum, task) => sum + (task.originalEstimate || 0), 0) }} 小时</h3>
+        <task-list :tasks="closedBugs" />
+      </div>
+
+      <div v-if="activeTasks.length > 0" class="task-section">
+        <h3>Active Task Total Original Estimate = {{ activeTasks.reduce((sum, task) => sum + (task.originalEstimate || 0), 0) }} 小时</h3>
+        <task-list :tasks="activeTasks" />
+      </div>
     </div>
+
+    <loading v-if="loading" />
 
     <el-dialog v-model="reportDialogVisible" title="周报预览" width="800px">
       <div class="report-content" id="report-content">
         <pre>{{ reportContent }}</pre>
       </div>
       <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="reportDialogVisible = false">关闭</el-button>
-          <el-button type="primary" @click="copyReport">复制到剪贴板</el-button>
-        </span>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="copyReport">复制</el-button>
+          <el-button type="primary" @click="captureScreenshot('report')">截图</el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -184,21 +176,53 @@ const handleSaveSuccess = () => {
 };
 
 // 截图
-const captureScreenshot = async () => {
+const captureScreenshot = async (source = 'main') => {
   try {
-    const element = document.getElementById("report-content");
-    if (!element) return;
+    let element;
+    if (source === 'report') {
+      element = document.getElementById("report-content");
+    } else {
+      // 主页面截图
+      element = document.getElementById("main-content");
+    }
+
+    if (!element) {
+      ElMessage.error("未找到要截图的内容");
+      return;
+    }
     
-    const canvas = await html2canvas(element);
-    const dataUrl = canvas.toDataURL("image/png");
+    const canvas = await html2canvas(element, {
+      useCORS: true,
+      scale: window.devicePixelRatio,
+      logging: false,
+      allowTaint: true,
+      scrollX: 0,
+      scrollY: -window.scrollY,
+      backgroundColor: '#ffffff'
+    });
+
+    // 在移动端，使用 Blob 和 window.open 来显示图片
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const blobUrl = URL.createObjectURL(blob);
     
-    const link = document.createElement("a");
-    link.download = "weekly-report.png";
-    link.href = dataUrl;
-    link.click();
+    if (/mobile/i.test(navigator.userAgent)) {
+      // 移动端：在新窗口打开图片，用户可以长按保存
+      window.open(blobUrl, '_blank');
+    } else {
+      // 桌面端：直接下载
+      const link = document.createElement("a");
+      const timestamp = new Date().toISOString().split('T')[0];
+      link.download = source === 'report' ? `周报_${timestamp}.png` : `任务列表_${timestamp}.png`;
+      link.href = blobUrl;
+      link.click();
+    }
+
+    // 清理 Blob URL
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+    ElMessage.success("截图已生成");
   } catch (error) {
     console.error("Error capturing screenshot:", error);
-    ElMessage.error("截图失败");
+    ElMessage.error("截图失败：" + error.message);
   }
 };
 
@@ -211,30 +235,139 @@ onMounted(() => {
 
 <style scoped>
 .container {
-  height: 100vh;
+  padding: 20px;
+  max-width: 100%;
+  box-sizing: border-box;
+  background-color: #ffffff;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f5f7fa;
+}
+
+.header {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.action-buttons :deep(.el-button) {
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-buttons :deep(.el-button.is-circle) {
+  width: 32px;
+  height: 32px;
+  padding: 8px;
+  min-height: unset;
+}
+
+.action-buttons :deep(.el-icon) {
+  width: 16px;
+  height: 16px;
+}
+
+.main-content {
+  flex: 1;
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.task-section {
+  margin-bottom: 30px;
+}
+
+.task-section:last-child {
+  margin-bottom: 0;
+}
+
+.task-section h3 {
+  margin: 0 0 15px;
+  font-size: 16px;
+  color: #333;
 }
 
 .report-content {
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 16px;
-  background-color: #f5f7fa;
+  background-color: #ffffff;
+  padding: 20px;
   border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: monospace;
+  line-height: 1.5;
+  font-size: 14px;
+  margin: 0;
 }
 
 .report-content pre {
   margin: 0;
   white-space: pre-wrap;
-  word-wrap: break-word;
-  font-family: "Courier New", Courier, monospace;
+  font-family: inherit;
+}
+
+:deep(.el-dialog) {
+  max-width: 95%;
+  margin: 5vh auto !important;
+}
+
+:deep(.el-dialog__body) {
+  padding: 0;
+  background-color: #ffffff;
 }
 
 .dialog-footer {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background-color: #ffffff;
+}
+
+.dialog-footer .el-button {
+  min-width: 100px;
+}
+
+@media screen and (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+
+  .main-content {
+    padding: 15px;
+  }
+
+  .action-buttons {
+    gap: 6px;
+  }
+
+  .task-section h3 {
+    font-size: 14px;
+  }
+
+  .report-content {
+    padding: 15px;
+    font-size: 13px;
+  }
+
+  .dialog-footer {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .dialog-footer .el-button {
+    flex: 1;
+    min-width: 0;
+  }
 }
 </style>

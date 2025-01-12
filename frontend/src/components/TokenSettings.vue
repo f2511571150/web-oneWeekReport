@@ -14,6 +14,7 @@
         :rules="rules"
         ref="formRef"
         status-icon
+        :label-position="isMobile ? 'top' : 'right'"
       >
         <el-form-item
           label="Personal Token"
@@ -134,6 +135,12 @@ const emit = defineEmits(['save-success']);
 const dialogVisible = ref(false);
 const formRef = ref(null);
 const saving = ref(false);
+const isMobile = ref(window.innerWidth <= 768);
+
+// 监听窗口大小变化
+window.addEventListener('resize', () => {
+  isMobile.value = window.innerWidth <= 768;
+});
 
 const form = ref({
   token: "",
@@ -254,40 +261,110 @@ defineExpose({
 </script>
 
 <style scoped>
-.projects-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.settings-form {
+  padding: 20px;
+}
+
+.form-item {
+  margin-bottom: 20px;
+}
+
+.project-list {
+  margin-top: 10px;
 }
 
 .project-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.project-actions {
-  margin-top: 10px;
-}
-
-.project-list-enter-active,
-.project-list-leave-active {
-  transition: all 0.3s ease;
-}
-
-.project-list-enter-from,
-.project-list-leave-to {
-  opacity: 0;
-  transform: translateX(30px);
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+.project-input {
+  flex: 1;
+  margin-right: 10px;
 }
 
 .add-project-btn {
   margin-top: 10px;
+  width: 100%;
+}
+
+@media screen and (max-width: 768px) {
+  .settings-form {
+    padding: 10px;
+  }
+
+  :deep(.el-dialog) {
+    width: 95% !important;
+    max-height: 90vh;
+    margin: 5vh auto !important;
+  }
+
+  :deep(.el-dialog__body) {
+    padding: 10px;
+    max-height: calc(90vh - 120px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  :deep(.el-form-item) {
+    margin-bottom: 20px;
+  }
+
+  :deep(.el-form-item__label) {
+    padding: 0 0 8px;
+    line-height: 1.5;
+    color: #606266;
+    font-size: 14px;
+  }
+
+  :deep(.el-form--label-top .el-form-item__label) {
+    margin-bottom: 8px;
+  }
+
+  :deep(.el-input) {
+    width: 100%;
+  }
+
+  .project-item {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .project-input {
+    margin-right: 0;
+  }
+
+  :deep(.el-button.is-circle) {
+    padding: 8px;
+    min-height: 32px;
+  }
+
+  :deep(.el-dialog__footer) {
+    padding: 10px 15px;
+    text-align: center;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  :deep(.el-dialog__footer .el-button) {
+    margin: 0;
+    flex: 1;
+    padding: 8px 15px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .dialog-footer {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .dialog-footer .el-button {
+    flex: 1;
+  }
 }
 </style>

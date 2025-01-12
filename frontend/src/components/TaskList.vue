@@ -151,41 +151,46 @@ const getTaskUrl = (taskId) => {
 
 <style scoped>
 .task-list {
-  margin: 20px 0;
-  color: #000000;
-}
-
-.task-header {
-  margin-bottom: 10px;
-  font-weight: bold;
-  color: #000000;
+  margin-bottom: 20px;
+  width: 100%;
+  overflow-x: auto;
 }
 
 :deep(.el-table) {
-  color: #000000 !important;
-  font-size: 12px;
+  width: 100%;
 }
 
-:deep(.el-table th) {
-  color: #000000 !important;
-  font-size: 12px;
-  padding: 8px 0;
+:deep(.el-table__cell) {
+  padding: 8px;
 }
 
-:deep(.el-table td) {
-  padding: 4px 0;
-}
+@media screen and (max-width: 768px) {
+  .task-list {
+    margin: 0 -10px;
+    width: calc(100% + 20px);
+  }
 
-:deep(.el-table--border) {
-  border: 1px solid #dcdfe6;
-}
+  :deep(.el-table) {
+    font-size: 14px;
+  }
 
-:deep(.el-table--border th),
-:deep(.el-table--border td) {
-  border-right: 1px solid #dcdfe6;
-}
+  :deep(.el-table__cell) {
+    padding: 5px 8px;
+  }
 
-:deep(.el-table__row) {
-  height: 32px;
+  :deep(.el-table .cell) {
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  :deep(.el-table__body-wrapper) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  :deep(.el-table__header-wrapper) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 </style>
