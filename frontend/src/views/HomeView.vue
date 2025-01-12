@@ -226,10 +226,10 @@ const handleSaveSuccess = () => {
 };
 
 // 截图
-const captureScreenshot = async (source = "main") => {
+const captureScreenshot = async (source = 'main') => {
   try {
     let element;
-    if (source === "report") {
+    if (source === 'report') {
       element = document.getElementById("report-content");
     } else {
       element = document.getElementById("main-content");
@@ -240,85 +240,202 @@ const captureScreenshot = async (source = "main") => {
       return;
     }
 
-    // 保存原始样式和滚动位置
-    const originalScrollTop = window.scrollY;
+    // 保存原始状态
     const originalStyles = new Map();
+    const originalScrollTop = window.scrollY;
 
-    // 获取所有表格和可滚动元素
-    const scrollableElements = element.querySelectorAll(
-      ".el-table__body-wrapper, [style*='overflow']"
-    );
+    // 处理所有 Element Plus 表格
+    const tables = element.querySelectorAll('.el-table');
+    tables.forEach(table => {
+      // 保存原始样式
+      const tableState = {
+        style: {},
+        rowStyles: new Map(),
+        cellStyles: new Map()
+      };
 
-    // 保存原始样式并临时修改
-    scrollableElements.forEach((el) => {
-      originalStyles.set(el, {
-        height: el.style.height,
-        maxHeight: el.style.maxHeight,
-        overflow: el.style.overflow,
-        position: el.style.position,
+      // 保存表格样式
+      Array.from(table.style).forEach(prop => {
+        tableState.style[prop] = table.style[prop];
       });
 
-      // 临时移除高度限制和滚动
-      el.style.height = "auto";
-      el.style.maxHeight = "none";
-      el.style.overflow = "visible";
-      el.style.position = "relative";
-    });
+      // 保存行和单元格样式
+      table.querySelectorAll('.el-table__body tr').forEach((row, index) => {
+        const rowStyle = {};
+        Array.from(row.style).forEach(prop => {
+          rowStyle[prop] = row.style[prop];
+        });
+        tableState.rowStyles.set(index, rowStyle);
 
-    // 确保表格内容完全展开
-    const tables = element.querySelectorAll(".el-table");
-    tables.forEach((table) => {
-      const wrapper = table.querySelector(".el-table__body-wrapper");
-      if (wrapper) {
-        wrapper.style.height = "auto";
-        wrapper.style.maxHeight = "none";
+        row.querySelectorAll('td').forEach((cell, cellIndex) => {
+          const cellStyle = {};
+          Array.from(cell.style).forEach(prop => {
+            cellStyle[prop] = cell.style[prop];
+          });
+          tableState.cellStyles.set(`${index}-${cellIndex}`, cellStyle);
+        });
+      });
+
+      originalStyles.set(table, tableState);
+
+      // 设置表格基础样式
+      table.style.width = '100%';
+      table.style.borderCollapse = 'collapse';
+      table.style.borderSpacing = '0';
+
+      // 处理表格行
+      const rows = table.querySelectorAll('.el-table__body tr');
+      rows.forEach((row, index) => {
+        // 设置行样式
+        row.style.backgroundColor = index % 2 === 0 ? '#FFFFFF' : '#FAFAFA';
+
+        // 处理单元格
+        row.querySelectorAll('td').forEach((cell, cellIndex) => {
+          // 重置并设置单元格样式
+          const computedStyle = window.getComputedStyle(cell);
+          const paddingLeft = computedStyle.getPropertyValue('padding-left');
+          const paddingRight = computedStyle.getPropertyValue('padding-right');
+
+          cell.style.cssText = '';
+          cell.style.backgroundColor = 'inherit';
+          cell.style.border = '1px solid #EBEEF5';
+          cell.style.padding = `12px ${paddingRight} 12px ${paddingLeft}`;
+          cell.style.position = 'relative';
+          cell.style.boxSizing = 'border-box';
+
+          // 处理单元格内容
+          const cellDiv = cell.querySelector('.cell');
+          if (cellDiv) {
+            cellDiv.style.boxSizing = 'border-box';
+            cellDiv.style.overflow = 'hidden';
+            cellDiv.style.textOverflow = 'ellipsis';
+          }
+        });
+      });
+
+      // 处理表头
+      table.querySelectorAll('.el-table__header th').forEach(th => {
+        th.style.backgroundColor = '#F5F7FA';
+        th.style.border = '1px solid #EBEEF5';
+        th.style.padding = '12px';
+        th.style.fontWeight = '600';
+        th.style.color = '#606266';
+      });
+
+      // 确保最后一行的边框显示正确
+      if (rows.length > 0) {
+        const lastRow = rows[rows.length - 1];
+        lastRow.querySelectorAll('td').forEach(cell => {
+          cell.style.borderBottom = '1px solid #EBEEF5';
+        });
       }
     });
 
+    // 创建 canvas
     const canvas = await html2canvas(element, {
       useCORS: true,
       scale: window.devicePixelRatio || 1,
       logging: false,
       allowTaint: true,
-      backgroundColor: "#ffffff",
+      backgroundColor: '#ffffff',
       scrollX: 0,
-      scrollY: 0,
-      windowWidth: element.scrollWidth,
-      windowHeight: element.scrollHeight,
+      scrollY: -window.scrollY,
       onclone: (clonedDoc) => {
         const clonedElement = clonedDoc.getElementById(element.id);
         if (clonedElement) {
-          // 处理克隆元素中的表格
-          const clonedTables = clonedElement.querySelectorAll(".el-table");
-          clonedTables.forEach((table) => {
-            const wrapper = table.querySelector(".el-table__body-wrapper");
-            if (wrapper) {
-              wrapper.style.height = "auto";
-              wrapper.style.maxHeight = "none";
-              wrapper.style.overflow = "visible";
+          clonedElement.querySelectorAll('.el-table').forEach(clonedTable => {
+            // 设置克隆表格的基础样式
+            clonedTable.style.width = '100%';
+            clonedTable.style.borderCollapse = 'collapse';
+            clonedTable.style.borderSpacing = '0';
+
+            // 处理克隆表格的行
+            const rows = clonedTable.querySelectorAll('.el-table__body tr');
+            rows.forEach((row, index) => {
+              row.style.backgroundColor = index % 2 === 0 ? '#FFFFFF' : '#FAFAFA';
+
+              row.querySelectorAll('td').forEach(cell => {
+                const computedStyle = window.getComputedStyle(cell);
+                const paddingLeft = computedStyle.getPropertyValue('padding-left');
+                const paddingRight = computedStyle.getPropertyValue('padding-right');
+
+                cell.style.cssText = '';
+                cell.style.backgroundColor = 'inherit';
+                cell.style.border = '1px solid #EBEEF5';
+                cell.style.padding = `12px ${paddingRight} 12px ${paddingLeft}`;
+                cell.style.position = 'relative';
+                cell.style.boxSizing = 'border-box';
+
+                const cellDiv = cell.querySelector('.cell');
+                if (cellDiv) {
+                  cellDiv.style.boxSizing = 'border-box';
+                  cellDiv.style.overflow = 'hidden';
+                  cellDiv.style.textOverflow = 'ellipsis';
+                }
+              });
+            });
+
+            // 处理克隆表格的表头
+            clonedTable.querySelectorAll('.el-table__header th').forEach(th => {
+              th.style.backgroundColor = '#F5F7FA';
+              th.style.border = '1px solid #EBEEF5';
+              th.style.padding = '12px';
+              th.style.fontWeight = '600';
+              th.style.color = '#606266';
+            });
+
+            // 确保克隆表格最后一行的边框显示正确
+            if (rows.length > 0) {
+              const lastRow = rows[rows.length - 1];
+              lastRow.querySelectorAll('td').forEach(cell => {
+                cell.style.borderBottom = '1px solid #EBEEF5';
+              });
             }
           });
         }
-      },
+      }
     });
 
     // 恢复原始样式
-    scrollableElements.forEach((el) => {
-      const originalStyle = originalStyles.get(el);
-      if (originalStyle) {
-        Object.assign(el.style, originalStyle);
+    tables.forEach(table => {
+      const state = originalStyles.get(table);
+      if (state) {
+        // 恢复表格样式
+        Object.keys(state.style).forEach(prop => {
+          table.style[prop] = state.style[prop];
+        });
+
+        // 恢复行样式
+        table.querySelectorAll('.el-table__body tr').forEach((row, index) => {
+          const rowStyle = state.rowStyles.get(index);
+          if (rowStyle) {
+            Object.keys(rowStyle).forEach(prop => {
+              row.style[prop] = rowStyle[prop];
+            });
+          }
+
+          // 恢复单元格样式
+          row.querySelectorAll('td').forEach((cell, cellIndex) => {
+            const cellStyle = state.cellStyles.get(`${index}-${cellIndex}`);
+            if (cellStyle) {
+              Object.keys(cellStyle).forEach(prop => {
+                cell.style[prop] = cellStyle[prop];
+              });
+            }
+          });
+        });
       }
     });
 
     // 恢复滚动位置
     window.scrollTo(0, originalScrollTop);
 
-    // 将 canvas 转换为图片数据
-    const imgData = canvas.toDataURL("image/png");
+    // 转换为图片
+    const imgData = canvas.toDataURL('image/png');
 
     if (/mobile|android|iphone/i.test(navigator.userAgent)) {
-      // 创建预览容器
-      const previewContainer = document.createElement("div");
+      // 移动端预览
+      const previewContainer = document.createElement('div');
       previewContainer.style.cssText = `
         position: fixed;
         top: 0;
@@ -327,23 +444,21 @@ const captureScreenshot = async (source = "main") => {
         bottom: 0;
         background: rgba(0, 0, 0, 0.9);
         z-index: 9998;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
       `;
 
-      // 创建图片容器
-      const imgContainer = document.createElement("div");
+      const imgContainer = document.createElement('div');
       imgContainer.style.cssText = `
         padding: 20px;
-        min-height: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
+        width: 100%;
+        box-sizing: border-box;
       `;
 
-      // 创建图片元素
-      const img = document.createElement("img");
+      const img = document.createElement('img');
       img.src = imgData;
       img.style.cssText = `
         width: 100%;
@@ -351,8 +466,7 @@ const captureScreenshot = async (source = "main") => {
         display: block;
       `;
 
-      // 创建提示文本
-      const hint = document.createElement("div");
+      const hint = document.createElement('div');
       hint.style.cssText = `
         position: fixed;
         top: 20px;
@@ -366,20 +480,18 @@ const captureScreenshot = async (source = "main") => {
         text-align: center;
         z-index: 9999;
       `;
-      hint.textContent = "长按图片可保存";
+      hint.textContent = '长按图片可保存';
 
       imgContainer.appendChild(img);
       previewContainer.appendChild(imgContainer);
       document.body.appendChild(previewContainer);
       document.body.appendChild(hint);
 
-      // 点击关闭预览
       previewContainer.onclick = () => {
         document.body.removeChild(previewContainer);
         document.body.removeChild(hint);
       };
 
-      // 3秒后隐藏提示
       setTimeout(() => {
         if (document.body.contains(hint)) {
           document.body.removeChild(hint);
@@ -387,12 +499,9 @@ const captureScreenshot = async (source = "main") => {
       }, 3000);
     } else {
       // 桌面端下载
-      const link = document.createElement("a");
-      const timestamp = new Date().toISOString().split("T")[0];
-      link.download =
-        source === "report"
-          ? `周报_${timestamp}.png`
-          : `任务列表_${timestamp}.png`;
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().split('T')[0];
+      link.download = source === 'report' ? `周报_${timestamp}.png` : `任务列表_${timestamp}.png`;
       link.href = imgData;
       link.click();
     }
