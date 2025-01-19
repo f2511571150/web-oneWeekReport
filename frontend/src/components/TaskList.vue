@@ -15,7 +15,7 @@
 
     <el-table
       :data="tasks"
-      style="width: 100%"
+      style="width: 100%;margin-top: 10px"
       v-loading="loading"
       border
       align="left"

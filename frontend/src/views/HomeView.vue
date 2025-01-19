@@ -44,8 +44,8 @@
     </div>
 
     <div class="main-content" id="main-content">
-      <div v-if="createdTasks.length > 0" class="task-section">
-        <h3>
+      <div  class="task-section">
+        <!-- <h3>
           Created Task Total Original Estimate =
           {{
             createdTasks.reduce(
@@ -54,40 +54,40 @@
             )
           }}
           小时
-        </h3>
-        <task-list :tasks="createdTasks" />
+        </h3> -->
+        <task-list :tasks="createdTasks" type="created" />
       </div>
 
-      <div v-if="closedTasks.length > 0" class="task-section">
-        <h3>
-          Closed Task Total Original Estimate =
+      <div  class="task-section">
+        <!-- <h3>
+          Closed Task Total Completed Work =
           {{
             closedTasks.reduce(
-              (sum, task) => sum + (task.originalEstimate || 0),
+              (sum, task) => sum + (task.completedWork || 0),
               0
             )
           }}
           小时
-        </h3>
-        <task-list :tasks="closedTasks" />
+        </h3> -->
+        <task-list :tasks="closedTasks" type="closed" />
       </div>
 
-      <div v-if="closedBugs.length > 0" class="task-section">
-        <h3>
-          Closed Bug Total Original Estimate =
+      <div  class="task-section">
+        <!-- <h3>
+          Resolved Bug & Closed Bug Total Completed Work =
           {{
             closedBugs.reduce(
-              (sum, task) => sum + (task.originalEstimate || 0),
+              (sum, task) => sum + (task.completedWork || 0),
               0
             )
           }}
           小时
-        </h3>
-        <task-list :tasks="closedBugs" />
+        </h3> -->
+        <task-list :tasks="closedBugs" type="bugs" />
       </div>
 
-      <div v-if="activeTasks.length > 0" class="task-section">
-        <h3>
+      <div  class="task-section">
+        <!-- <h3>
           Active Task Total Original Estimate =
           {{
             activeTasks.reduce(
@@ -96,8 +96,8 @@
             )
           }}
           小时
-        </h3>
-        <task-list :tasks="activeTasks" />
+        </h3> -->
+        <task-list :tasks="activeTasks" type="active" />
       </div>
     </div>
 
@@ -257,7 +257,7 @@ const captureScreenshot = async (source = "main") => {
           height: tableInstance.height,
           maxHeight: tableInstance.maxHeight,
           showHeader: tableInstance.showHeader,
-          data: [...tableInstance.data]
+          data: [...tableInstance.data],
         });
 
         // 临时禁用虚拟滚动和高度限制
@@ -280,10 +280,12 @@ const captureScreenshot = async (source = "main") => {
       });
 
       // 保存表格包装器样式
-      const wrappers = table.querySelectorAll('.el-table__body-wrapper, .el-table__header-wrapper');
+      const wrappers = table.querySelectorAll(
+        ".el-table__body-wrapper, .el-table__header-wrapper"
+      );
       wrappers.forEach((wrapper, index) => {
         const wrapperStyle = {};
-        Array.from(wrapper.style).forEach(prop => {
+        Array.from(wrapper.style).forEach((prop) => {
           wrapperStyle[prop] = wrapper.style[prop];
         });
         tableState.wrapperStyles.set(index, wrapperStyle);
@@ -315,16 +317,18 @@ const captureScreenshot = async (source = "main") => {
       table.style.tableLayout = "fixed";
 
       // 处理表格包装器
-      wrappers.forEach(wrapper => {
+      wrappers.forEach((wrapper) => {
         wrapper.style.overflow = "visible";
         wrapper.style.height = "auto";
         wrapper.style.maxHeight = "none";
       });
 
       // 移除固定列
-      table.querySelectorAll('.el-table__fixed, .el-table__fixed-right').forEach(fixed => {
-        fixed.style.display = 'none';
-      });
+      table
+        .querySelectorAll(".el-table__fixed, .el-table__fixed-right")
+        .forEach((fixed) => {
+          fixed.style.display = "none";
+        });
 
       // 处理表格行
       const rows = table.querySelectorAll(".el-table__body tr");
@@ -376,7 +380,7 @@ const captureScreenshot = async (source = "main") => {
     });
 
     // 等待样式应用完成
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // 创建 canvas
     const canvas = await html2canvas(element, {
@@ -400,26 +404,35 @@ const captureScreenshot = async (source = "main") => {
             clonedTable.style.tableLayout = "fixed";
 
             // 处理表格包装器
-            clonedTable.querySelectorAll('.el-table__body-wrapper, .el-table__header-wrapper').forEach(wrapper => {
-              wrapper.style.overflow = "visible";
-              wrapper.style.height = "auto";
-              wrapper.style.maxHeight = "none";
-            });
+            clonedTable
+              .querySelectorAll(
+                ".el-table__body-wrapper, .el-table__header-wrapper"
+              )
+              .forEach((wrapper) => {
+                wrapper.style.overflow = "visible";
+                wrapper.style.height = "auto";
+                wrapper.style.maxHeight = "none";
+              });
 
             // 移除固定列
-            clonedTable.querySelectorAll('.el-table__fixed, .el-table__fixed-right').forEach(fixed => {
-              fixed.style.display = 'none';
-            });
+            clonedTable
+              .querySelectorAll(".el-table__fixed, .el-table__fixed-right")
+              .forEach((fixed) => {
+                fixed.style.display = "none";
+              });
 
             // 处理克隆表格的行
             const rows = clonedTable.querySelectorAll(".el-table__body tr");
             rows.forEach((row, index) => {
-              row.style.backgroundColor = index % 2 === 0 ? "#FFFFFF" : "#FAFAFA";
+              row.style.backgroundColor =
+                index % 2 === 0 ? "#FFFFFF" : "#FAFAFA";
 
               row.querySelectorAll("td").forEach((cell) => {
                 const computedStyle = window.getComputedStyle(cell);
-                const paddingLeft = computedStyle.getPropertyValue("padding-left");
-                const paddingRight = computedStyle.getPropertyValue("padding-right");
+                const paddingLeft =
+                  computedStyle.getPropertyValue("padding-left");
+                const paddingRight =
+                  computedStyle.getPropertyValue("padding-right");
 
                 cell.style.cssText = "";
                 cell.style.backgroundColor = "inherit";
@@ -441,15 +454,17 @@ const captureScreenshot = async (source = "main") => {
             });
 
             // 处理克隆表格的表头
-            clonedTable.querySelectorAll(".el-table__header th").forEach((th) => {
-              th.style.backgroundColor = "#F5F7FA";
-              th.style.border = "1px solid #EBEEF5";
-              th.style.padding = "12px";
-              th.style.fontWeight = "600";
-              th.style.color = "#606266";
-              th.style.whiteSpace = "normal";
-              th.style.wordBreak = "break-word";
-            });
+            clonedTable
+              .querySelectorAll(".el-table__header th")
+              .forEach((th) => {
+                th.style.backgroundColor = "#F5F7FA";
+                th.style.border = "1px solid #EBEEF5";
+                th.style.padding = "12px";
+                th.style.fontWeight = "600";
+                th.style.color = "#606266";
+                th.style.whiteSpace = "normal";
+                th.style.wordBreak = "break-word";
+              });
 
             // 确保克隆表格最后一行的边框显示正确
             if (rows.length > 0) {
@@ -484,20 +499,24 @@ const captureScreenshot = async (source = "main") => {
         });
 
         // 恢复表格包装器样式
-        const wrappers = table.querySelectorAll('.el-table__body-wrapper, .el-table__header-wrapper');
+        const wrappers = table.querySelectorAll(
+          ".el-table__body-wrapper, .el-table__header-wrapper"
+        );
         wrappers.forEach((wrapper, index) => {
           const wrapperStyle = state.wrapperStyles.get(index);
           if (wrapperStyle) {
-            Object.keys(wrapperStyle).forEach(prop => {
+            Object.keys(wrapperStyle).forEach((prop) => {
               wrapper.style[prop] = wrapperStyle[prop];
             });
           }
         });
 
         // 恢复固定列显示
-        table.querySelectorAll('.el-table__fixed, .el-table__fixed-right').forEach(fixed => {
-          fixed.style.display = '';
-        });
+        table
+          .querySelectorAll(".el-table__fixed, .el-table__fixed-right")
+          .forEach((fixed) => {
+            fixed.style.display = "";
+          });
 
         // 恢复行样式
         table.querySelectorAll(".el-table__body tr").forEach((row, index) => {
